@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClimaTempo 15D — Previsão do Tempo Simples</title>
+  <meta name="description" content="Previsão do tempo para hoje e os próximos 15 dias. Simples, rápido e direto." />
+  <style>
+    :root {
+      --bg: #0b1120;
+      --surface: #131c31;
+      --surface-alt: #1a2642;
+      --border: #263554;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --temp-max: #fb7185;
+      --temp-min: #60a5fa;
+      --rain: #38bdf8;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --danger: #fb7185;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ============ HEADER ============ */
+    header {
+      background: rgba(11, 17, 32, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-container {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+    }
+
+    .search-box {
+      display: flex;
+      flex: 1;
+      max-width: 520px;
+      gap: 0.5rem;
+      position: relative;
+      min-width: 240px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.7rem 1rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .btn {
+      background: var(--primary);
+      color: #082f49;
+      border: none;
+      padding: 0.7rem 1.2rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn:hover { background: var(--primary-hover); }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-geo {
+      background: var(--surface-alt);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 0.7rem 0.9rem;
+    }
+
+    .btn-geo:hover { background: var(--border); }
+
+    .suggestions {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+      z-index: 200;
+      overflow: hidden;
+      display: none;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .suggestion-item {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover { background: rgba(56, 189, 248, 0.15); }
+    .suggestion-sub { color: var(--text-muted); font-size: 0.78rem; }
+
+    /* ============ SOURCE SELECTOR ============ */
+    .source-bar {
+      max-width: 1180px;
+      margin: 1rem auto 0;
+      padding: 0 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .source-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .source-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.45rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .source-select:hover { border-color: var(--primary); }
+    .source-select:focus { border-color: var(--primary); }
+
+    /* ============ MAIN ============ */
+    main {
+      max-width: 1180px;
+      margin: 1.5rem auto;
+      padding: 0 1rem 3rem;
+    }
+
+    /* ============ CURRENT BANNER ============ */
+    .current-banner {
+      background: linear-gradient(135deg, #162442 0%, #11192e 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1.5rem;
+      align-items: center;
+      position: relative;
+    }
+
+    .city-info h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+      letter-spacing: -0.5px;
+    }
+
+    .city-meta {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .current-desc {
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+
+    .current-temp-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+
+    .current-icon { font-size: 3.75rem; line-height: 1; }
+
+    .current-temp {
+      font-size: 3.5rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+
+    .current-stats {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 1rem 1.25rem;
+      border-radius: 12px;
+      font-size: 0.88rem;
+    }
+
+    .stat-item { display: flex; flex-direction: column; gap: 0.15rem; }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .stat-val { font-weight: 700; font-size: 1rem; }
+
+    /* ============ SOURCE BADGE ============ */
+    .source-badge {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--primary);
+      padding: 0.3rem 0.7rem;
+      border-radius: 100px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .source-badge.inpe {
+      background: rgba(74, 222, 128, 0.12);
+      border-color: rgba(74, 222, 128, 0.4);
+      color: var(--success);
+    }
+
+    .source-badge.fallback {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.4);
+      color: var(--warning);
+    }
+
+    .source-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ============ SECTION HEADER ============ */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .section-header h2 { font-size: 1.2rem; font-weight: 700; }
+    .section-header span { font-size: 0.82rem; color: var(--text-muted); }
+
+    /* ============ FORECAST GRID ============ */
+    .forecast-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.85rem;
+    }
+
+    .day-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.85rem;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .day-card:hover {
+      transform: translateY(-3px);
+      border-color: #3b5280;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .day-card.today-card {
+      border-color: var(--primary);
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.1) 0%, var(--surface) 100%);
+    }
+
+    .day-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .day-name {
+      font-weight: 800;
+      font-size: 1rem;
+      text-transform: capitalize;
+    }
+
+    .day-date { font-size: 0.78rem; color: var(--text-muted); }
+    .day-icon { font-size: 2.2rem; line-height: 1; }
+
+    .day-condition {
+      font-size: 0.86rem;
+      color: var(--text-main);
+      font-weight: 500;
+      min-height: 2.4em;
+      display: flex;
+      align-items: center;
+    }
+
+    .temps-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+    }
+
+    .temp-item { display: flex; flex-direction: column; }
+    .temp-item span:first-child {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.3px;
+    }
+
+    .t-min { color: var(--temp-min); font-weight: 800; font-size: 1.15rem; }
+    .t-max { color: var(--temp-max); font-weight: 800; font-size: 1.15rem; }
+
+    .day-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      padding-top: 0.6rem;
+    }
+
+    .rain-prob { color: var(--rain); font-weight: 600; }
+
+    .rain-bar {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 2px;
+      margin-top: 0.4rem;
+      overflow: hidden;
+    }
+
+    .rain-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), #818cf8);
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    /* ============ HOURLY ============ */
+    .hourly-strip {
+      display: flex;
+      gap: 0.6rem;
+      overflow-x: auto;
+      padding: 0.5rem 0 1rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .hourly-strip::-webkit-scrollbar { height: 8px; }
+    .hourly-strip::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .hour-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.7rem 0.85rem;
+      min-width: 78px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .hour-card.now {
+      border-color: var(--primary);
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.12) 0%, var(--surface) 100%);
+    }
+
+    .hour-time { font-size: 0.75rem; color: var(--text-muted); }
+    .hour-icon { font-size: 1.5rem; margin: 0.25rem 0; }
+    .hour-temp { font-weight: 700; font-size: 0.95rem; }
+    .hour-rain { font-size: 0.7rem; color: var(--rain); margin-top: 0.15rem; }
+
+    /* ============ MESSAGES ============ */
+    .message-box {
+      text-align: center;
+      padding: 3rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text-muted);
+    }
+
+    .message-box strong { color: var(--text-main); }
+    .error-msg { border-color: var(--temp-max); color: #fecdd3; }
+
+    .spinner {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ============ FOOTER ============ */
+    footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
+    }
+
+    footer a { color: var(--primary); text-decoration: none; }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 640px) {
+      .current-banner {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .current-temp-wrap { justify-content: center; }
+      .current-icon { font-size: 3rem; }
+      .current-temp { font-size: 3rem; }
+      .city-info h1 { font-size: 1.4rem; }
+      .header-container { flex-direction: column; align-items: stretch; }
+      .search-box { max-width: none; }
+      .source-bar { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-container">
+      <div class="logo">
+        <span>⛅</span>
+        <span>ClimaTempo 15D</span>
+      </div>
+
+      <form class="search-box" id="search-form" autocomplete="off">
+        <input
+          type="text"
+          id="city-input"
+          placeholder="Digite a cidade (ex: Belo Horizonte, São Paulo...)"
+          aria-label="Nome da cidade"
+          autocomplete="off"
+        />
+        <button type="submit" class="btn">Buscar</button>
+        <button type="button" class="btn btn-geo" id="geo-btn" title="Usar minha localização atual" aria-label="Usar minha localização">📍</button>
+        <div class="suggestions" id="suggestions-list" role="listbox"></div>
+      </form>
+    </div>
+
+    <div class="source-bar">
+      <span class="source-label">Fonte:</span>
+      <select id="source-select" class="source-select" title="Escolher fonte de dados meteorológicos">
+        <option value="auto">Automático (Open-Meteo + CPTEC/INPE)</option>
+        <option value="openmeteo">Open-Meteo (16 dias, global)</option>
+        <option value="cptec">CPTEC/INPE (oficial Brasil, 14 dias)</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div id="weather-content">
+      <div class="message-box"><span class="spinner"></span>Carregando dados meteorológicos...</div>
+    </div>
+  </main>
+
+  <footer>
+    Dados: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (global) e
+    <a href="https://www.cptec.inpe.br" target="_blank" rel="noopener">CPTEC/INPE</a> (oficial Brasil).
+    Previsão para hoje + próximos 15 dias.
+  </footer>
+
+  <script>
+    "use strict";
+
+    // ============ CONFIG ============
+    const OPEN_METEO_API = 'https://api.open-meteo.com/v1/forecast';
+    const OPEN_METEO_GEO = 'https://geocoding-api.open-meteo.com/v1/search';
+    const CPTEC_BASE = 'https://servicos.cptec.inpe.br/XML';
+
+    // Lista de proxies CORS públicos (tentamos em sequência)
+    // Se a página estiver rodando no servidor local (servidor-cptec.js),
+    // ele próprio faz o proxy em /cptec/* — preferimos sempre esse caminho.
+    const isLocalProxy = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const CORS_PROXIES = isLocalProxy
+      ? [url => `${location.origin}/cptec${url.replace(CPTEC_BASE, '')}`]
+      : [
+          url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+          url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+          url => `https://thingproxy.freeboard.io/fetch/${url}`
+        ];
+
+    // ============ BASE DE CIDADES BRASILEIRAS (fallback offline) ============
+    // Inclui o id CPTEC quando conhecido
+    const CIDADES_BASE = [
+      { name: "Belo Horizonte", admin1: "Minas Gerais", uf: "MG", country: "Brasil", cptecId: 222, latitude: -19.9208, longitude: -43.9378 },
+      { name: "São Paulo", admin1: "São Paulo", uf: "SP", country: "Brasil", cptecId: 244, latitude: -23.5505, longitude: -46.6333 },
+      { name: "Rio de Janeiro", admin1: "Rio de Janeiro", uf: "RJ", country: "Brasil", cptecId: 241, latitude: -22.9068, longitude: -43.1729 },
+      { name: "Brasília", admin1: "Distrito Federal", uf: "DF", country: "Brasil", cptecId: 222, latitude: -15.7801, longitude: -47.9292 },
+      { name: "Salvador", admin1: "Bahia", uf: "BA", country: "Brasil", cptecId: 250, latitude: -12.9714, longitude: -38.5014 },
+      { name: "Fortaleza", admin1: "Ceará", uf: "CE", country: "Brasil", cptecId: 258, latitude: -3.7319, longitude: -38.5267 },
+      { name: "Curitiba", admin1: "Paraná", uf: "PR", country: "Brasil", cptecId: 271, latitude: -25.4284, longitude: -49.2733 },
+      { name: "Manaus", admin1: "Amazonas", uf: "AM", country: "Brasil", cptecId: 284, latitude: -3.1190, longitude: -60.0217 },
+      { name: "Recife", admin1: "Pernambuco", uf: "PE", country: "Brasil", cptecId: 287, latitude: -8.0476, longitude: -34.8770 },
+      { name: "Porto Alegre", admin1: "Rio Grande do Sul", uf: "RS", country: "Brasil", cptecId: 297, latitude: -30.0346, longitude: -51.2177 },
+      { name: "Goiânia", admin1: "Goiás", uf: "GO", country: "Brasil", cptecId: 308, latitude: -16.6864, longitude: -49.2643 },
+      { name: "Belém", admin1: "Pará", uf: "PA", country: "Brasil", cptecId: 319, latitude: -1.4558, longitude: -48.4902 },
+      { name: "Vitória", admin1: "Espírito Santo", uf: "ES", country: "Brasil", cptecId: 325, latitude: -20.3155, longitude: -40.3128 },
+      { name: "Florianópolis", admin1: "Santa Catarina", uf: "SC", country: "Brasil", cptecId: 332, latitude: -27.5954, longitude: -48.5480 },
+      { name: "Campinas", admin1: "São Paulo", uf: "SP", country: "Brasil", cptecId: 488, latitude: -22.9099, longitude: -47.0626 },
+      { name: "São Luís", admin1: "Maranhão", uf: "MA", country: "Brasil", cptecId: 358, latitude: -2.5297, longitude: -44.3028 },
+      { name: "Maceió", admin1: "Alagoas", uf: "AL", country: "Brasil", cptecId: 309, latitude: -9.6498, longitude: -35.7089 },
+      { name: "Natal", admin1: "Rio Grande do Norte", uf: "RN", country: "Brasil", cptecId: 318, latitude: -5.7945, longitude: -35.2110 },
+      { name: "Teresina", admin1: "Piauí", uf: "PI", country: "Brasil", cptecId: 343, latitude: -5.0892, longitude: -42.8019 },
+      { name: "João Pessoa", admin1: "Paraíba", uf: "PB", country: "Brasil", cptecId: 314, latitude: -7.1195, longitude: -34.8450 },
+      { name: "Aracaju", admin1: "Sergipe", uf: "SE", country: "Brasil", cptecId: 230, latitude: -10.9472, longitude: -37.0731 },
+      { name: "Cuiabá", admin1: "Mato Grosso", uf: "MT", country: "Brasil", cptecId: 276, latitude: -15.6014, longitude: -56.0979 },
+      { name: "Campo Grande", admin1: "Mato Grosso do Sul", uf: "MS", country: "Brasil", cptecId: 270, latitude: -20.4697, longitude: -54.6201 },
+      { name: "Porto Velho", admin1: "Rondônia", uf: "RO", country: "Brasil", cptecId: 296, latitude: -8.7619, longitude: -63.9039 },
+      { name: "Rio Branco", admin1: "Acre", uf: "AC", country: "Brasil", cptecId: 290, latitude: -9.9747, longitude: -67.8100 },
+      { name: "Boa Vista", admin1: "Roraima", uf: "RR", country: "Brasil", cptecId: 245, latitude: 2.8235, longitude: -60.6758 },
+      { name: "Macapá", admin1: "Amapá", uf: "AP", country: "Brasil", cptecId: 277, latitude: 0.0349, longitude: -51.0694 },
+      { name: "Palmas", admin1: "Tocantins", uf: "TO", country: "Brasil", cptecId: 285, latitude: -10.1689, longitude: -48.3317 }
+    ];
+
+    // ============ ELEMENTOS DOM ============
+    const cityInput = document.getElementById('city-input');
+    const suggestionsList = document.getElementById('suggestions-list');
+    const weatherContent = document.getElementById('weather-content');
+    const searchForm = document.getElementById('search-form');
+    const geoBtn = document.getElementById('geo-btn');
+    const sourceSelect = document.getElementById('source-select');
+    let debounceTimer = null;
+    let ultimaLocalBuscado = null;
+
+    // Carrega preferência de fonte
+    try {
+      const savedSource = localStorage.getItem('climaFonte');
+      if (savedSource) sourceSelect.value = savedSource;
+    } catch (e) {}
+
+    sourceSelect.addEventListener('change', () => {
+      try { localStorage.setItem('climaFonte', sourceSelect.value); } catch (e) {}
+      if (ultimaLocalBuscado) buscarPrevisao(ultimaLocalBuscado);
+    });
+
+    // ============ INTERPRETAR CÓDIGOS WMO (Open-Meteo) ============
+    function interpretarWMO(code) {
+      const mapa = {
+        0:  { texto: 'Céu limpo', icone: '☀️' },
+        1:  { texto: 'Predominantemente limpo', icone: '🌤️' },
+        2:  { texto: 'Parcialmente nublado', icone: '⛅' },
+        3:  { texto: 'Nublado', icone: '☁️' },
+        45: { texto: 'Nevoeiro', icone: '🌫️' },
+        48: { texto: 'Nevoeiro com geada', icone: '🌫️' },
+        51: { texto: 'Garoa leve', icone: '🌦️' },
+        53: { texto: 'Garoa moderada', icone: '🌦️' },
+        55: { texto: 'Garoa intensa', icone: '🌧️' },
+        61: { texto: 'Chuva fraca', icone: '🌦️' },
+        63: { texto: 'Chuva moderada', icone: '🌧️' },
+        65: { texto: 'Chuva forte', icone: '⛈️' },
+        71: { texto: 'Neve fraca', icone: '🌨️' },
+        73: { texto: 'Neve moderada', icone: '🌨️' },
+        75: { texto: 'Neve intensa', icone: '❄️' },
+        80: { texto: 'Pancadas leves', icone: '🌦️' },
+        81: { texto: 'Pancadas moderadas', icone: '🌧️' },
+        82: { texto: 'Pancadas fortes', icone: '⛈️' },
+        95: { texto: 'Trovoada', icone: '⛈️' },
+        96: { texto: 'Trovoada com granizo', icone: '⛈️' },
+        99: { texto: 'Trovoada com granizo forte', icone: '⛈️' }
+      };
+      return mapa[code] || { texto: 'Condição variável', icone: '🌡️' };
+    }
+
+    // ============ MAPEAR SIGLAS CPTEC ============
+    // Tabela oficial de siglas do CPTEC/INPE
+    function interpretarSiglaCPTEC(sigla) {
+      const s = (sigla || '').trim().toLowerCase();
+      const mapa = {
+        'ec': { texto: 'Encoberto com chuvas isoladas', icone: '🌧️', chuva: true },
+        'ci': { texto: 'Encoberto com possibilidade de chuva', icone: '🌥️', chuva: true },
+        'c':  { texto: 'Céu encoberto', icone: '☁️', chuva: false },
+        'in': { texto: 'Instável com possibilidade de chuva', icone: '🌤️', chuva: true },
+        'pp': { texto: 'Poss. pancadas de chuva', icone: '🌦️', chuva: true },
+        'cm': { texto: 'Chuva pela manhã', icone: '🌦️', chuva: true },
+        'cn': { texto: 'Chuva à noite', icone: '🌧️', chuva: true },
+        'ct': { texto: 'Chuva à tarde', icone: '🌧️', chuva: true },
+        'pt': { texto: 'Pancadas de chuva à tarde', icone: '🌦️', chuva: true },
+        'pm': { texto: 'Pancadas de chuva pela manhã', icone: '🌦️', chuva: true },
+        'np': { texto: 'Nublado e pancadas de chuva', icone: '🌧️', chuva: true },
+        'nc': { texto: 'Nublado com possibilidade de chuva', icone: '🌥️', chuva: true },
+        'nn': { texto: 'Nublado', icone: '☁️', chuva: false },
+        'n':  { texto: 'Nublado', icone: '☁️', chuva: false },
+        'cl': { texto: 'Céu limpo', icone: '☀️', chuva: false },
+        'pn': { texto: 'Parcialmente nublado', icone: '⛅', chuva: false },
+        'cv': { texto: 'Céu encoberto com neblina', icone: '🌫️', chuva: false },
+        'ch': { texto: 'Chuva', icone: '🌧️', chuva: true },
+        't':  { texto: 'Tempestade', icone: '⛈️', chuva: true },
+        'ps': { texto: 'Predomínio de sol', icone: '🌤️', chuva: false },
+        'pc': { texto: 'Pancadas de chuva', icone: '🌦️', chuva: true },
+        'lt': { texto: 'Tempestade localizada', icone: '⛈️', chuva: true },
+        'nt': { texto: 'Nublado com trovoada', icone: '⛈️', chuva: true },
+        'ne': { texto: 'Neve', icone: '❄️', chuva: false },
+        'nd': { texto: 'Não definido', icone: '🌡️', chuva: false }
+      };
+      return mapa[s] || { texto: 'Condição variável', icone: '🌡️', chuva: false };
+    }
+
+    // ============ FORMATAR DATA ============
+    function formatarDataCard(dateStr, index) {
+      const parts = dateStr.split('-').map(Number);
+      const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+
+      let diaSemana;
+      if (index === 0) diaSemana = 'Hoje';
+      else if (index === 1) diaSemana = 'Amanhã';
+      else diaSemana = dataObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+
+      const dataCurta = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+      return { diaSemana, dataCurta };
+    }
+
+    // ============ FETCH COM TIMEOUT ============
+    function fetchComTimeout(url, ms) {
+      return new Promise((resolve, reject) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ms);
+        fetch(url, { signal: controller.signal })
+          .then(resolve, reject)
+          .finally(() => clearTimeout(timer));
+      });
+    }
+
+    // ============ FETCH ATRAVÉS DE PROXY CORS ============
+    // Tenta vários proxies públicos em sequência até um funcionar
+    async function fetchViaProxy(urlAlvo, ms) {
+      let ultimoErro = null;
+      for (const montarProxy of CORS_PROXIES) {
+        const urlProxy = montarProxy(urlAlvo);
+        try {
+          const res = await fetchComTimeout(urlProxy, ms);
+          if (!res.ok) { ultimoErro = new Error('Proxy HTTP ' + res.status); continue; }
+          // Lê como ArrayBuffer para detectar encoding (CPTEC responde em ISO-8859-1)
+          const buf = await res.arrayBuffer();
+          const txtLatin1 = new TextDecoder('latin1').decode(buf);
+          if (txtLatin1.includes('ISO-8859-1')) {
+            // Vem em ISO-8859-1 — decodifica corretamente
+            return new TextDecoder('iso-8859-1').decode(buf);
+          }
+          // Senão assume UTF-8 (proxy local já converte)
+          return new TextDecoder('utf-8').decode(buf);
+        } catch (e) {
+          ultimoErro = e;
+          continue;
+        }
+      }
+      throw ultimoErro || new Error('Todos os proxies falharam');
+    }
+
+    // ============ BUSCAR CIDADES (Open-Meteo Geocoding + base local) ============
+    async function procurarCidades(termo) {
+      const termoLower = termo.toLowerCase();
+      const locais = CIDADES_BASE.filter(c =>
+        c.name.toLowerCase().includes(termoLower) ||
+        c.admin1.toLowerCase().includes(termoLower) ||
+        (c.uf && c.uf.toLowerCase() === termoLower)
+      );
+
+      try {
+        const res = await fetchComTimeout(
+          `${OPEN_METEO_GEO}?name=${encodeURIComponent(termo)}&count=8&language=pt&format=json`,
+          3500
+        );
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          return data.results.map(c => ({
+            name: c.name,
+            admin1: c.admin1 || '',
+            country: c.country || '',
+            latitude: c.latitude,
+            longitude: c.longitude
+          }));
+        }
+      } catch (e) {
+        if (locais.length > 0) return locais;
+        throw e;
+      }
+      return locais;
+    }
+
+    // ============ BUSCAR ID CPTEC PELO NOME DA CIDADE ============
+    async function buscarIdCPTEC(nomeCidade) {
+      // Remove acentos para bater com a API do CPTEC (que exige ASCII)
+      const nomeSemAcento = nomeCidade.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const url = `${CPTEC_BASE}/listaCidades?city=${encodeURIComponent(nomeSemAcento)}`;
+      const xml = await fetchViaProxy(url, 8000);
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xml, 'application/xml');
+      const cidades = doc.querySelectorAll('cidade');
+      if (cidades.length === 0) return null;
+      // Pega a primeira cidade (mais relevante)
+      const primeira = cidades[0];
+      const id = primeira.querySelector('id')?.textContent;
+      const nome = primeira.querySelector('nome')?.textContent || nomeCidade;
+      const uf = primeira.querySelector('uf')?.textContent || '';
+      return id ? { id: parseInt(id, 10), nome, uf } : null;
+    }
+
+    // ============ AUTOCOMPLETE ============
+    cityInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const termo = cityInput.value.trim();
+      if (termo.length < 2) {
+        suggestionsList.style.display = 'none';
+        suggestionsList.innerHTML = '';
+        return;
+      }
+      debounceTimer = setTimeout(async () => {
+        try {
+          const resultados = await procurarCidades(termo);
+          if (!resultados.length) {
+            suggestionsList.style.display = 'none';
+            return;
+          }
+          suggestionsList.innerHTML = resultados.map((cidade, idx) => {
+            const regiao = [cidade.admin1, cidade.country].filter(Boolean).join(' - ');
+            return `
+              <div class="suggestion-item" data-index="${idx}" role="option" tabindex="0">
+                <strong>${escapeHtml(cidade.name)}</strong>
+                <span class="suggestion-sub">${escapeHtml(regiao)}</span>
+              </div>
+            `;
+          }).join('');
+          suggestionsList._resultados = resultados;
+          suggestionsList.style.display = 'block';
+        } catch (e) {
+          suggestionsList.style.display = 'none';
+        }
+      }, 280);
+    });
+
+    suggestionsList.addEventListener('click', (e) => {
+      const item = e.target.closest('.suggestion-item');
+      if (!item) return;
+      const idx = parseInt(item.dataset.index, 10);
+      const resultados = suggestionsList._resultados;
+      if (resultados && resultados[idx]) selecionarCidade(resultados[idx]);
+    });
+
+    suggestionsList.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const item = e.target.closest('.suggestion-item');
+      if (!item) return;
+      e.preventDefault();
+      const idx = parseInt(item.dataset.index, 10);
+      const resultados = suggestionsList._resultados;
+      if (resultados && resultados[idx]) selecionarCidade(resultados[idx]);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-box')) {
+        suggestionsList.style.display = 'none';
+      }
+    });
+
+    // ============ SUBMIT ============
+    searchForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      suggestionsList.style.display = 'none';
+      const termo = cityInput.value.trim();
+      if (!termo) return;
+      weatherContent.innerHTML = `<div class="message-box"><span class="spinner"></span>Buscando cidade "${escapeHtml(termo)}"...</div>`;
+      try {
+        const encontrados = await procurarCidades(termo);
+        if (encontrados.length > 0) selecionarCidade(encontrados[0]);
+        else {
+          weatherContent.innerHTML = `
+            <div class="message-box error-msg">
+              Cidade "<strong>${escapeHtml(termo)}</strong>" não encontrada.<br/>
+              <small>Tente o nome completo ou use 📍 para sua localização.</small>
+            </div>
+          `;
+        }
+      } catch (err) {
+        weatherContent.innerHTML = `
+          <div class="message-box error-msg">
+            Erro ao buscar a cidade.<br/><small>${escapeHtml(err.message)}</small>
+          </div>
+        `;
+      }
+    });
+
+    // ============ GEOLOCALIZAÇÃO ============
+    geoBtn.addEventListener('click', usarLocalizacaoAtual);
+
+    function usarLocalizacaoAtual() {
+      if (!navigator.geolocation) { alert('Seu navegador não suporta geolocalização.'); return; }
+      weatherContent.innerHTML = `<div class="message-box"><span class="spinner"></span>Obtendo sua localização via GPS...</div>`;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const localGeo = {
+            name: 'Minha Localização',
+            admin1: '', country: '',
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude
+          };
+          cityInput.value = '';
+          buscarPrevisao(localGeo);
+        },
+        () => {
+          weatherContent.innerHTML = `
+            <div class="message-box error-msg">
+              Permissão de localização negada ou indisponível.<br/>
+              <small>Digite o nome da cidade acima.</small>
+            </div>
+          `;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      );
+    }
+
+    // ============ SELECIONAR CIDADE ============
+    function selecionarCidade(cidadeObj) {
+      suggestionsList.style.display = 'none';
+      suggestionsList.innerHTML = '';
+      cityInput.value = cidadeObj.name;
+      try { localStorage.setItem('ultimaCidadeClima', JSON.stringify(cidadeObj)); } catch (e) {}
+      buscarPrevisao(cidadeObj);
+    }
+
+    // ============ BUSCAR PREVISÃO (roteador de fontes) ============
+    async function buscarPrevisao(local) {
+      ultimaLocalBuscado = local;
+      const fonte = sourceSelect.value;
+
+      weatherContent.innerHTML = `<div class="message-box"><span class="spinner"></span>Carregando previsão para <strong>${escapeHtml(local.name)}</strong>...</div>`;
+
+      try {
+        if (fonte === 'cptec') {
+          weatherContent.innerHTML = `<div class="message-box"><span class="spinner"></span>Consultando CPTEC/INPE para <strong>${escapeHtml(local.name)}</strong>...<br/><small style="opacity:0.7">Via proxy CORS — pode levar até 15 segundos.</small></div>`;
+          await buscarPrevisaoCPTEC(local, false);
+        } else if (fonte === 'openmeteo') {
+          await buscarPrevisaoOpenMeteo(local);
+        } else {
+          // auto: usa Open-Meteo como principal (mais robusto)
+          await buscarPrevisaoOpenMeteo(local);
+        }
+      } catch (err) {
+        // Em caso de falha, tenta a fonte alternativa
+        try {
+          if (fonte === 'cptec') {
+            // CPTEC falhou (provavelmente proxies CORS indisponíveis) — fallback Open-Meteo
+            await buscarPrevisaoOpenMeteo(local, true);
+          } else {
+            weatherContent.innerHTML = `
+              <div class="message-box error-msg">
+                <strong>Não foi possível carregar a previsão.</strong><br/>
+                Verifique sua conexão e tente novamente.<br/>
+                <small>Detalhe: ${escapeHtml(err.message)}</small>
+              </div>
+            `;
+          }
+        } catch (err2) {
+          weatherContent.innerHTML = `
+            <div class="message-box error-msg">
+              <strong>Falha total ao carregar dados.</strong><br/>
+              <small>${escapeHtml(err2.message)}</small>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // ============ OPEN-METEO ============
+    async function buscarPrevisaoOpenMeteo(local, isFallback = false) {
+      const paramsBase = {
+        latitude: local.latitude,
+        longitude: local.longitude,
+        current: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m',
+        hourly: 'temperature_2m,precipitation_probability,weather_code',
+        daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max',
+        timezone: 'auto',
+        forecast_days: '16'
+      };
+
+      const url = `${OPEN_METEO_API}?${new URLSearchParams(paramsBase).toString()}`;
+      const res = await fetchComTimeout(url, 12000);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const dados = await res.json();
+      if (!dados.daily || !dados.daily.time) throw new Error('Resposta inválida da API');
+      renderizarClima(local, dados, isFallback ? 'openmeteo-fallback' : 'openmeteo');
+    }
+
+    // ============ CPTEC/INPE ============
+    async function buscarPrevisaoCPTEC(local, isFallback = false) {
+      // 1. Descobrir o ID CPTEC da cidade
+      let cptecId = local.cptecId;
+      let uf = local.uf || '';
+      let nomeCidade = local.name;
+
+      if (!cptecId) {
+        // Tenta buscar pelo nome
+        const resultado = await buscarIdCPTEC(local.name);
+        if (!resultado) throw new Error('Cidade não encontrada no CPTEC/INPE');
+        cptecId = resultado.id;
+        uf = resultado.uf;
+        nomeCidade = resultado.nome;
+      }
+
+      // 2. Buscar previsão 7 dias (em paralelo com a estendida)
+      const url7dias = `${CPTEC_BASE}/cidade/7dias/${cptecId}/previsao.xml`;
+      const urlEstendida = `${CPTEC_BASE}/cidade/${cptecId}/estendida.xml`;
+
+      const [xml7, xmlEst] = await Promise.all([
+        fetchViaProxy(url7dias, 12000),
+        fetchViaProxy(urlEstendida, 12000).catch(() => null) // estendida pode falhar
+      ]);
+
+      const parser = new DOMParser();
+
+      // Parse previsão 7 dias
+      const doc7 = parser.parseFromString(xml7, 'application/xml');
+      const erro7 = doc7.querySelector('parsererror');
+      if (erro7) throw new Error('Erro ao processar XML do CPTEC');
+
+      const dias7 = [];
+      doc7.querySelectorAll('previsao').forEach(p => {
+        const dia = p.querySelector('dia')?.textContent;
+        const tempo = p.querySelector('tempo')?.textContent || '';
+        const maxima = parseInt(p.querySelector('maxima')?.textContent || '0', 10);
+        const minima = parseInt(p.querySelector('minima')?.textContent || '0', 10);
+        const iuv = parseFloat(p.querySelector('iuv')?.textContent || '0');
+        if (dia) dias7.push({ dia, tempo: tempo.trim(), maxima, minima, iuv });
+      });
+
+      // Parse estendida (com tratamento de datas duplicadas)
+      const diasEst = [];
+      if (xmlEst) {
+        const docE = parser.parseFromString(xmlEst, 'application/xml');
+        const erroE = docE.querySelector('parsererror');
+        if (!erroE) {
+          const datasVistas = new Set();
+          docE.querySelectorAll('previsao').forEach(p => {
+            const dia = p.querySelector('dia')?.textContent;
+            // Bug conhecido: estendida tem datas duplicadas. Pegamos a primeira ocorrência.
+            if (dia && !datasVistas.has(dia)) {
+              datasVistas.add(dia);
+              const tempo = p.querySelector('tempo')?.textContent || '';
+              const maxima = parseInt(p.querySelector('maxima')?.textContent || '0', 10);
+              const minima = parseInt(p.querySelector('minima')?.textContent || '0', 10);
+              const iuv = parseFloat(p.querySelector('iuv')?.textContent || '0');
+              diasEst.push({ dia, tempo: tempo.trim(), maxima, minima, iuv });
+            }
+          });
+        }
+      }
+
+      // 3. Combinar 7 dias + estendida, removendo duplicatas de data
+      const todasDatas = new Set();
+      const diasCombinados = [];
+      // Primeiro 7 dias (tem prioridade — é do meteorologista)
+      dias7.forEach(d => {
+        if (!todasDatas.has(d.dia)) {
+          todasDatas.add(d.dia);
+          diasCombinados.push(d);
+        }
+      });
+      // Depois estendida (Ensemble)
+      diasEst.forEach(d => {
+        if (!todasDatas.has(d.dia)) {
+          todasDatas.add(d.dia);
+          diasCombinados.push(d);
+        }
+      });
+
+      // Ordena por data
+      diasCombinados.sort((a, b) => a.dia.localeCompare(b.dia));
+
+      if (diasCombinados.length === 0) {
+        throw new Error('CPTEC retornou previsão vazia');
+      }
+
+      // 4. Normaliza para o formato esperado pelo renderizador
+      const dadosNormalizados = {
+        fonte: 'cptec',
+        nomeCidade,
+        uf,
+        atualizacao: doc7.querySelector('atualizacao')?.textContent || new Date().toISOString().split('T')[0],
+        current: {
+          // CPTEC não tem condições atuais no endpoint de previsão.
+          // Usamos o dia atual como referência aproximada.
+          temperature_2m: diasCombinados[0].maxima,
+          apparent_temperature: diasCombinados[0].maxima,
+          relative_humidity_2m: null,
+          precipitation: null,
+          weather_code: null,
+          wind_speed_10m: null,
+          time: new Date().toISOString()
+        },
+        hourly: null, // CPTEC não tem previsão horária
+        daily: {
+          time: diasCombinados.map(d => d.dia),
+          weather_code: diasCombinados.map(d => d.tempo), // string, não número
+          temperature_2m_max: diasCombinados.map(d => d.maxima),
+          temperature_2m_min: diasCombinados.map(d => d.minima),
+          precipitation_sum: diasCombinados.map(d => null),
+          precipitation_probability_max: diasCombinados.map(d => null),
+          wind_speed_10m_max: diasCombinados.map(d => null),
+          uv_index_max: diasCombinados.map(d => d.iuv)
+        }
+      };
+
+      renderizarClima(local, dadosNormalizados, isFallback ? 'cptec-fallback' : 'cptec');
+    }
+
+    // ============ RENDERIZAR CLIMA ============
+    function renderizarClima(local, dados, fonte) {
+      const atual = dados.current || {};
+      const diario = dados.daily || {};
+      const horario = dados.hourly || null;
+      const isCPTEC = fonte === 'cptec' || fonte === 'cptec-fallback';
+
+      // Condição atual
+      let condAtual;
+      if (isCPTEC) {
+        const primeiraSigla = Array.isArray(diario.weather_code) ? diario.weather_code[0] : '';
+        condAtual = interpretarSiglaCPTEC(primeiraSigla);
+      } else {
+        condAtual = interpretarWMO(atual.weather_code);
+      }
+
+      const subtituloLocal = [local.admin1, local.country].filter(Boolean).join(', ');
+      const horaAtualizacao = atual.time
+        ? new Date(atual.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : (dados.atualizacao || '--:--');
+
+      // ============ BADGE DA FONTE ============
+      // isFallback=true significa que a fonte PRIMÁRIA escolhida pelo usuário falhou
+      // e caímos para a fonte alternativa. O badge mostra qual está sendo usada AGORA.
+      const badgeHtml = (() => {
+        if (fonte === 'cptec') {
+          return `<div class="source-badge inpe"><span class="dot"></span> Fonte: CPTEC/INPE</div>`;
+        }
+        if (fonte === 'cptec-fallback') {
+          // Usuário pediu Open-Meteo, mas falhou → usando CPTEC agora
+          return `<div class="source-badge fallback"><span class="dot"></span> Open-Meteo falhou — usando CPTEC/INPE</div>`;
+        }
+        if (fonte === 'openmeteo-fallback') {
+          // Usuário pediu CPTEC, mas falhou → usando Open-Meteo agora
+          return `<div class="source-badge fallback"><span class="dot"></span> CPTEC falhou — usando Open-Meteo</div>`;
+        }
+        return `<div class="source-badge"><span class="dot"></span> Fonte: Open-Meteo</div>`;
+      })();
+
+      // ============ HOURLY (só Open-Meteo) ============
+      let hourlyHtml = '';
+      if (horario && horario.time && horario.time.length > 0) {
+        const agora = new Date();
+        const inicioIdx = horario.time.findIndex(t => new Date(t) >= agora);
+        const startIdx = inicioIdx >= 0 ? inicioIdx : 0;
+        const endIdx = Math.min(startIdx + 24, horario.time.length);
+
+        const hourCards = [];
+        for (let i = startIdx; i < endIdx; i++) {
+          const horaDate = new Date(horario.time[i]);
+          const hora = horaDate.getHours();
+          const isNow = (i === startIdx);
+          const cond = interpretarWMO(horario.weather_code[i]);
+          const temp = Math.round(horario.temperature_2m[i]);
+          const prob = horario.precipitation_probability ? (horario.precipitation_probability[i] ?? 0) : 0;
+
+          hourCards.push(`
+            <div class="hour-card ${isNow ? 'now' : ''}">
+              <div class="hour-time">${isNow ? 'Agora' : hora.toString().padStart(2, '0') + 'h'}</div>
+              <div class="hour-icon">${cond.icone}</div>
+              <div class="hour-temp">${temp}°</div>
+              <div class="hour-rain">${prob}%</div>
+            </div>
+          `);
+        }
+        hourlyHtml = `
+          <div class="section-header">
+            <h2>Próximas 24 Horas</h2>
+            <span>Previsão hora a hora (Open-Meteo)</span>
+          </div>
+          <div class="hourly-strip">${hourCards.join('')}</div>
+        `;
+      } else if (isCPTEC) {
+        // CPTEC não fornece previsão horária — mostra um aviso
+        hourlyHtml = `
+          <div class="section-header">
+            <h2>Previsão horária</h2>
+            <span>Indisponível no CPTEC/INPE</span>
+          </div>
+          <div class="message-box" style="padding: 1.25rem; font-size: 0.85rem;">
+            O CPTEC/INPE não oferece previsão hora a hora pelos endpoints públicos.
+            Para esse dado, use a fonte Open-Meteo (seletor no topo da página).
+          </div>
+        `;
+      }
+
+      // ============ 16 DIAS ============
+      const cardsDiasHtml = diario.time.map((dataStr, idx) => {
+        const { diaSemana, dataCurta } = formatarDataCard(dataStr, idx);
+        const cond = isCPTEC
+          ? interpretarSiglaCPTEC(diario.weather_code[idx])
+          : interpretarWMO(diario.weather_code[idx]);
+        const tMin = Math.round(diario.temperature_2m_min[idx]);
+        const tMax = Math.round(diario.temperature_2m_max[idx]);
+
+        // Probabilidade de chuva e volume
+        let probChuva, volChuva, ventoMax, uvMax;
+        if (isCPTEC) {
+          // CPTEC: não tem probabilidade %, mas tem sigla que indica chuva
+          probChuva = cond.chuva ? null : 0;
+          volChuva = '—';
+          ventoMax = null;
+          uvMax = diario.uv_index_max ? (diario.uv_index_max[idx] ?? 0).toFixed(1) : null;
+        } else {
+          probChuva = diario.precipitation_probability_max ? (diario.precipitation_probability_max[idx] ?? 0) : 0;
+          volChuva = (diario.precipitation_sum[idx] ?? 0).toFixed(1);
+          ventoMax = Math.round(diario.wind_speed_10m_max[idx] ?? 0);
+          uvMax = diario.uv_index_max ? (diario.uv_index_max[idx] ?? 0).toFixed(1) : null;
+        }
+
+        const probHtml = isCPTEC
+          ? (cond.chuva ? `<span class="rain-prob">💧 Possibilidade de chuva</span>` : `<span>☁️ Sem chuva prevista</span>`)
+          : `<span class="rain-prob">💧 ${probChuva}% • ${volChuva}mm</span>`;
+
+        const ventoHtml = ventoMax != null ? `<span>💨 ${ventoMax} km/h</span>` : `<span style="opacity:0.5">💨 —</span>`;
+
+        const barWidth = isCPTEC ? (cond.chuva ? 70 : 0) : probChuva;
+
+        return `
+          <article class="day-card ${idx === 0 ? 'today-card' : ''}">
+            <div>
+              <div class="day-top">
+                <div>
+                  <div class="day-name">${diaSemana}</div>
+                  <div class="day-date">${dataCurta}</div>
+                </div>
+                <div class="day-icon" title="${cond.texto}">${cond.icone}</div>
+              </div>
+              <div class="day-condition">${cond.texto}</div>
+            </div>
+
+            <div>
+              <div class="temps-row">
+                <div class="temp-item">
+                  <span>Mín</span>
+                  <span class="t-min">${tMin}°</span>
+                </div>
+                <div class="temp-item" style="text-align: right;">
+                  <span>Máx</span>
+                  <span class="t-max">${tMax}°</span>
+                </div>
+              </div>
+
+              <div class="rain-bar">
+                <div class="rain-bar-fill" style="width: ${barWidth}%"></div>
+              </div>
+
+              <div class="day-details">
+                ${probHtml}
+                ${ventoHtml}
+              </div>
+              ${uvMax ? `<div class="day-details" style="border-top: none; padding-top: 0.3rem;"><span>☀️ UV ${uvMax}</span><span></span></div>` : ''}
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      // ============ STATS ATUAIS ============
+      let stats;
+      if (isCPTEC) {
+        // CPTEC não fornece dados horários atuais no endpoint de previsão
+        stats = [
+          { label: 'Temp. Máx. Hoje', val: Math.round(diario.temperature_2m_max[0]) + '°C' },
+          { label: 'Temp. Mín. Hoje', val: Math.round(diario.temperature_2m_min[0]) + '°C' },
+          { label: 'Índice UV Máx.', val: (diario.uv_index_max?.[0] ?? 0).toFixed(1) },
+          { label: 'Fonte', val: 'CPTEC/INPE' }
+        ];
+      } else {
+        stats = [
+          { label: 'Sensação Térmica', val: Math.round(atual.apparent_temperature) + '°C' },
+          { label: 'Umidade Relativa', val: (atual.relative_humidity_2m ?? '--') + '%' },
+          { label: 'Vento Atual', val: Math.round(atual.wind_speed_10m) + ' km/h' },
+          { label: 'Precipitação Agora', val: (atual.precipitation ?? 0) + ' mm' }
+        ];
+      }
+
+      const statsHtml = stats.map(s => `
+        <div class="stat-item">
+          <span class="stat-label">${s.label}</span>
+          <span class="stat-val">${s.val}</span>
+        </div>
+      `).join('');
+
+      const totalDias = diario.time.length;
+      const tituloSecao = isCPTEC ? `Previsão ${totalDias} Dias (CPTEC/INPE)` : `Previsão para ${totalDias} Dias`;
+      const subtituloSecao = isCPTEC
+        ? 'Dados oficiais do INPE — 7 dias + estendida'
+        : 'Hoje + 15 dias consecutivos';
+
+      weatherContent.innerHTML = `
+        <section class="current-banner">
+          ${badgeHtml}
+          <div class="city-info">
+            <h1>${escapeHtml(local.name)}</h1>
+            <div class="city-meta">
+              ${subtituloLocal ? escapeHtml(subtituloLocal) + ' • ' : ''}Lat ${local.latitude.toFixed(2)}, Lon ${local.longitude.toFixed(2)} • Atualizado às ${horaAtualizacao}
+            </div>
+            <div class="current-desc">${condAtual.icone} ${condAtual.texto}</div>
+          </div>
+
+          <div class="current-temp-wrap">
+            <span class="current-icon">${condAtual.icone}</span>
+            <span class="current-temp">${Math.round(atual.temperature_2m)}°</span>
+          </div>
+
+          <div class="current-stats">
+            ${statsHtml}
+          </div>
+        </section>
+
+        ${hourlyHtml}
+
+        <div class="section-header">
+          <h2>${tituloSecao}</h2>
+          <span>${subtituloSecao}</span>
+        </div>
+
+        <section class="forecast-grid">
+          ${cardsDiasHtml}
+        </section>
+      `;
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ============ ESCAPE HTML ============
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // ============ INIT ============
+    window.addEventListener('DOMContentLoaded', () => {
+      const salva = localStorage.getItem('ultimaCidadeClima');
+      if (salva) {
+        try {
+          const cidade = JSON.parse(salva);
+          if (cidade && cidade.latitude != null && cidade.longitude != null) {
+            cityInput.value = cidade.name;
+            buscarPrevisao(cidade);
+            return;
+          }
+        } catch (e) {}
+      }
+      selecionarCidade(CIDADES_BASE[0]);
+    });
+  </script>
+</body>
+</html>
